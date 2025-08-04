@@ -15,6 +15,7 @@ Edit the constants in ALL_CAPS to change behaviour.
 
 from datetime import date, timedelta
 import time
+import tempfile
 
 from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.common.by import By
@@ -40,8 +41,13 @@ BOOK_FOR_TOMORROW = True      # True → selects tomorrow automatically
 def launch_browser() -> "webdriver":
     opts = ChromeOptions()
     opts.add_argument("--start-maximized")
-    # Uncomment next line to run in headless mode once debugging is done
+    # Uncomment to enable headless mode once debugging is complete
     # opts.add_argument("--headless=new")
+
+    # Assign a unique temporary user data directory to avoid session creation issues
+    user_data_dir = tempfile.mkdtemp()
+    opts.add_argument(f"--user-data-dir={user_data_dir}")
+
     service = Service(ChromeDriverManager().install())
     return Chrome(service=service, options=opts)
 
