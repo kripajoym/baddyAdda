@@ -1,0 +1,41 @@
+# azure-pipelines.yml
+trigger: none  # No automatic trigger; scheduled trigger will be used
+
+schedules:
+  - cron: "30 3 * * *"   # 03:30 UTC = 09:00 IST daily
+    displayName: Daily 9AM IST booking
+    branches:
+      include:
+        - main
+    always: true
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # For security, set these as secret variables in Azure DevOps pipeline library
+  ADDA_EMAIL: 'kripajoym@gmail.com'  # Or use secret variable
+  ADDA_PASSWORD: 'Adda@1234567'      # Or use secret variable
+
+steps:
+# Step 1: Checkout repository (must contain your Python script)
+- checkout: self
+
+# Step 2: Set up Python and install dependencies
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.8'   # Or your preferred Python version
+    addToPath: true
+
+- script: |
+    python -m pip install --upgrade pip
+    pip install selenium==4.21.0 webdriver-manager
+  displayName: 'Install Python dependencies'
+
+# Step 3: Run your Python automation script
+- script: |
+    python book_facility.py
+  env:
+    ADDA_EMAIL: $(ADDA_EMAIL)
+    ADDA_PASSWORD: $(ADDA_PASSWORD)
+  displayName: 'Execute booking Python script'
