@@ -40,20 +40,30 @@ BOOK_FOR_TOMORROW = True      # True → selects tomorrow automatically
 def launch_browser() -> "webdriver":
     opts = ChromeOptions()
     opts.add_argument("--start-maximized")
-    # comment out headless if you prefer to see the browser while running
+    # comment out headless if you want to see the browser while running
     opts.add_argument("--headless=new")
     service = Service(ChromeDriverManager().install())
     return Chrome(service=service, options=opts)
 
-def wait_and_click(driver, locator, timeout=30):
-    """Wait for element to be clickable and click it."""
+def debug_page_state(driver, step_desc):
+    print(f"[DEBUG] Step: {step_desc}")
+    print(f"[DEBUG] Current URL: {driver.current_url}")
+    print(f"[DEBUG] Page title: {driver.title}")
+    try:
+        snippet = driver.page_source[:500]
+        print(f"[DEBUG] Page source snippet (first 500 chars): {snippet}")
+    except Exception as e:
+        print(f"[DEBUG] Could not get page source snippet: {e}")
+
+def wait_and_click(driver, locator, timeout=30, step_desc=""):
+    debug_page_state(driver, step_desc)
     print(f"[DEBUG] Waiting for element to be clickable: {locator}")
     element = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(locator))
     element.click()
     print(f"[DEBUG] Clicked element: {locator}")
 
-def wait_for_presence(driver, locator, timeout=30):
-    """Wait for presence of element located by locator."""
+def wait_for_presence(driver, locator, timeout=30, step_desc=""):
+    debug_page_state(driver, step_desc)
     print(f"[DEBUG] Waiting for presence of element: {locator}")
     element = WebDriverWait(driver, timeout).until(EC.presence_of_element_located(locator))
     print(f"[DEBUG] Element present: {locator}")
@@ -65,11 +75,10 @@ def main():
     try:
         # --- 1. open adda.io & click “Sign In” -----------------------
         driver.get("https://adda.io")
-        print(f"[DEBUG] Opened URL: {driver.current_url}")
-        wait_and_click(driver, (By.LINK_TEXT, "Sign In"))
+        wait_and_click(driver, (By.LINK_TEXT, "Sign In"), step_desc="Opening adda.io and clicking Sign In")
 
         # --- 2. log in ----------------------------------------------
-        wait_for_presence(driver, (By.ID, "loginEmail")).send_keys(ADDA_EMAIL)
+        wait_for_presence(driver, (By.ID, "loginEmail"), step_desc="Waiting for login email input").send_keys(ADDA_EMAIL)
         driver.find_element(By.ID, "password").send_keys(ADDA_PASSWORD)
         driver.find_element(By.XPATH, "//button[.='Sign In']").click()
         print("[DEBUG] Submitted login form")
@@ -79,13 +88,13 @@ def main():
 
         # --- 3. land inside MyADDA, open Facilities tab -------------
         wait_and_click(driver,
-            (By.XPATH, "//span[normalize-space()='Facilities' or text()='Facilities']")
+            (By.XPATH, "//span[normalize-space()='Facilities' or text()='Facilities']"),
+            step_desc="Clicking Facilities tab"
         )
-        print(f"[DEBUG] Navigating to facilities page")
 
         # Facilities UI is an AngularJS SPA → switch to the iframe-less URL
         driver.get("https://in.adda.io/myadda/facilities-index.php#/facilities")
-        wait_for_presence(driver, (By.ID, "fac_name"))
+        wait_for_presence(driver, (By.ID, "fac_name"), step_desc="Waiting for facilities page")
 
         # --- 4. choose desired facility -----------------------------
         Select(driver.find_element(By.ID, "fac_name")).select_by_visible_text(FACILITY_NAME)
@@ -99,7 +108,6 @@ def main():
             print(f"[DEBUG] Set booking date to: {target_date}")
         else:
             driver.find_element(By.ID, "datepicker").click()
-            # – if not auto-filling, user must interact with date-picker here –
             print("[DEBUG] Please interact with date picker manually (BOOK_FOR_TOMORROW=False)")
 
         # --- 6. select time slot ------------------------------------
@@ -127,7 +135,6 @@ def main():
             print("❌ Slot not available or booking restricted for today.")
 
     finally:
-        # comment out if you want the browser left open
         driver.quit()
         print("[DEBUG] Browser closed")
 
