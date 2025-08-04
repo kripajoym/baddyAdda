@@ -6,7 +6,7 @@ Automate ADDA facility booking exactly as recorded in seq_adda.io.seqe
 • Navigates to Facilities tab
 • Selects “Club House - Badminton Court 3”
 • Picks tomorrow’s date
-• Chooses slot 17:00-18:00
+• Chooses slot 13:00-14:00
 • Selects flat F3-402
 • Clicks “Check Availability” (and optionally “Book Facility”)
 
@@ -44,32 +44,36 @@ def launch_browser() -> "webdriver":
     service = Service(ChromeDriverManager().install())
     return Chrome(service=service, options=opts)
 
-def wait(driver, locator, sec=15):
-    """Shorthand for WebDriverWait"""
-    return WebDriverWait(driver, sec).until(EC.presence_of_element_located(locator))
+def wait_and_click(driver, locator, timeout=15):
+    """Wait for element to be clickable and click it."""
+    element = WebDriverWait(driver, timeout).until(EC.element_to_be_clickable(locator))
+    element.click()
+
+def wait_for_presence(driver, locator, timeout=15):
+    """Wait for presence of element located by locator."""
+    return WebDriverWait(driver, timeout).until(EC.presence_of_element_located(locator))
 
 def main():
     driver = launch_browser()
-    wait_for_click = WebDriverWait(driver, 15).until
 
     try:
         # --- 1. open adda.io & click “Sign In” -----------------------
         driver.get("https://adda.io")
-        wait_for_click((By.LINK_TEXT, "Sign In")).click()
+        wait_and_click(driver, (By.LINK_TEXT, "Sign In"))
 
         # --- 2. log in ----------------------------------------------
-        wait(driver, (By.ID, "loginEmail")).send_keys(ADDA_EMAIL)
+        wait_for_presence(driver, (By.ID, "loginEmail")).send_keys(ADDA_EMAIL)
         driver.find_element(By.ID, "password").send_keys(ADDA_PASSWORD)
         driver.find_element(By.XPATH, "//button[.='Sign In']").click()
 
         # --- 3. land inside MyADDA, open Facilities tab -------------
-        wait_for_click(
+        wait_and_click(driver,
             (By.XPATH, "//span[normalize-space()='Facilities' or text()='Facilities']")
-        ).click()
+        )
 
         # Facilities UI is an AngularJS SPA → switch to the iframe-less URL
         driver.get("https://in.adda.io/myadda/facilities-index.php#/facilities")
-        wait(driver, (By.ID, "fac_name"))
+        wait_for_presence(driver, (By.ID, "fac_name"))
 
         # --- 4. choose desired facility -----------------------------
         Select(driver.find_element(By.ID, "fac_name")).select_by_visible_text(FACILITY_NAME)
@@ -94,7 +98,9 @@ def main():
 
         # wait for success OR error popup
         try:
-            ok_btn = wait_for_click((By.XPATH, "//button[.='Book Facility']"), sec=8)
+            ok_btn = WebDriverWait(driver, 8).until(
+                EC.element_to_be_clickable((By.XPATH, "//button[.='Book Facility']"))
+            )
             print("✅ Slot available – booking now …")
             ok_btn.click()
             # brief wait for server confirmation
