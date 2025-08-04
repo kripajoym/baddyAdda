@@ -49,7 +49,8 @@ def launch_browser() -> "webdriver":
     temp_profile = tempfile.mkdtemp()
     opts.add_argument(f"--user-data-dir={temp_profile}")
 
-    return Chrome(ChromeDriverManager().install(), options=opts)
+    service = Service(ChromeDriverManager().install())
+    return Chrome(service=service, options=opts)
 
 def debug_page_state(driver, step_desc):
     print(f"[DEBUG] Step: {step_desc}")
