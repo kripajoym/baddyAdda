@@ -40,7 +40,7 @@ BOOK_FOR_TOMORROW = True      # True → selects tomorrow automatically
 def launch_browser() -> "webdriver":
     opts = ChromeOptions()
     opts.add_argument("--start-maximized")
-    # comment out headless if you want to see the browser while running
+    # Comment out headless to watch browser during debugging if needed
     opts.add_argument("--headless=new")
     service = Service(ChromeDriverManager().install())
     return Chrome(service=service, options=opts)
@@ -69,38 +69,59 @@ def wait_for_presence(driver, locator, timeout=30, step_desc=""):
     print(f"[DEBUG] Element present: {locator}")
     return element
 
+def close_cookies_banner(driver):
+    # Example attempt to close common cookie consent banner or modal if present
+    try:
+        consent_button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(text(),'Accept')]"))
+        )
+        consent_button.click()
+        print("[DEBUG] Closed cookie consent banner")
+        time.sleep(1)  # Wait for banner to disappear
+    except Exception:
+        print("[DEBUG] No cookie consent banner present or already closed")
+
 def main():
     driver = launch_browser()
 
     try:
-        # --- 1. open adda.io & click “Sign In” -----------------------
+        # --- 1. open adda.io -------------------------------------------
         driver.get("https://adda.io")
-        wait_and_click(driver, (By.LINK_TEXT, "Sign In"), step_desc="Opening adda.io and clicking Sign In")
+        print("[DEBUG] Opened adda.io")
+        
+        # Allow page to load initial content
+        time.sleep(4)
 
-        # --- 2. log in ----------------------------------------------
+        # Close any cookie consent or modal if present
+        close_cookies_banner(driver)
+
+        # --- 2. click Sign In using robust XPath ----------------------
+        wait_and_click(driver, (By.XPATH, "//a[contains(text(), 'Sign In')]"),
+                       step_desc="Clicking Sign In link")
+
+        # --- 3. log in -------------------------------------------------
         wait_for_presence(driver, (By.ID, "loginEmail"), step_desc="Waiting for login email input").send_keys(ADDA_EMAIL)
         driver.find_element(By.ID, "password").send_keys(ADDA_PASSWORD)
         driver.find_element(By.XPATH, "//button[.='Sign In']").click()
         print("[DEBUG] Submitted login form")
         
-        # wait a bit for login processing and page load
         time.sleep(3)
 
-        # --- 3. land inside MyADDA, open Facilities tab -------------
+        # --- 4. open Facilities tab ------------------------------------
         wait_and_click(driver,
             (By.XPATH, "//span[normalize-space()='Facilities' or text()='Facilities']"),
             step_desc="Clicking Facilities tab"
         )
 
-        # Facilities UI is an AngularJS SPA → switch to the iframe-less URL
+        # Switch to iframe-less URL for facilities
         driver.get("https://in.adda.io/myadda/facilities-index.php#/facilities")
         wait_for_presence(driver, (By.ID, "fac_name"), step_desc="Waiting for facilities page")
 
-        # --- 4. choose desired facility -----------------------------
+        # --- 5. select facility ----------------------------------------
         Select(driver.find_element(By.ID, "fac_name")).select_by_visible_text(FACILITY_NAME)
         print(f"[DEBUG] Selected facility: {FACILITY_NAME}")
 
-        # --- 5. pick booking date -----------------------------------
+        # --- 6. pick booking date -------------------------------------
         if BOOK_FOR_TOMORROW:
             target_date = (date.today() + timedelta(days=1)).strftime("%d-%m-%Y")
             js = f"document.getElementById('datepicker').value = '{target_date}'"
@@ -110,26 +131,24 @@ def main():
             driver.find_element(By.ID, "datepicker").click()
             print("[DEBUG] Please interact with date picker manually (BOOK_FOR_TOMORROW=False)")
 
-        # --- 6. select time slot ------------------------------------
+        # --- 7. select time slot --------------------------------------
         Select(driver.find_element(By.NAME, "fac_slot_id")).select_by_visible_text(SLOT_TEXT)
         print(f"[DEBUG] Selected time slot: {SLOT_TEXT}")
 
-        # --- 7. select flat -----------------------------------------
+        # --- 8. select flat -------------------------------------------
         Select(driver.find_element(By.NAME, "flatId")).select_by_visible_text(FLAT_TEXT)
         print(f"[DEBUG] Selected flat: {FLAT_TEXT}")
 
-        # --- 8. check availability (and optionally book) ------------
+        # --- 9. check availability and optionally book ----------------
         driver.find_element(By.XPATH, "//button[normalize-space()='Check Availability']").click()
         print("[DEBUG] Clicked 'Check Availability' button")
 
-        # wait for success OR error popup
         try:
             ok_btn = WebDriverWait(driver, 8).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[.='Book Facility']"))
             )
             print("✅ Slot available – booking now …")
             ok_btn.click()
-            # brief wait for server confirmation
             time.sleep(2)
         except Exception:
             print("❌ Slot not available or booking restricted for today.")
