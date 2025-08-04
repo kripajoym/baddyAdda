@@ -40,7 +40,9 @@ def launch_browser() -> "webdriver":
     opts.add_argument("--start-maximized")
     # comment out headless=False if you prefer a visible browser
     opts.add_argument("--headless=new")
-    return Chrome(ChromeDriverManager().install(), options=opts)
+    from selenium.webdriver.chrome.service import Service
+service = Service(ChromeDriverManager().install())
+return Chrome(service=service, options=opts)
 
 def wait(driver, locator, sec=15):
     """Shorthand for WebDriverWait"""
