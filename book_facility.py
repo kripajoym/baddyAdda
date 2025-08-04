@@ -40,16 +40,16 @@ BOOK_FOR_TOMORROW = True      # True → selects tomorrow automatically
 
 def launch_browser() -> "webdriver":
     opts = ChromeOptions()
-    opts.add_argument("--start-maximized")
-    # Uncomment to enable headless mode once debugging is complete
-    # opts.add_argument("--headless=new")
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    opts.add_argument("--window-size=1920,1080")
 
-    # Assign a unique temporary user data directory to avoid session creation issues
-    user_data_dir = tempfile.mkdtemp()
-    opts.add_argument(f"--user-data-dir={user_data_dir}")
+    # Use a unique temporary user data directory
+    temp_profile = tempfile.mkdtemp()
+    opts.add_argument(f"--user-data-dir={temp_profile}")
 
-    service = Service(ChromeDriverManager().install())
-    return Chrome(service=service, options=opts)
+    return Chrome(ChromeDriverManager().install(), options=opts)
 
 def debug_page_state(driver, step_desc):
     print(f"[DEBUG] Step: {step_desc}")
