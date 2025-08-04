@@ -21,6 +21,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait, Select
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
 # ------------------------------------------------------------------
 # CONFIGURABLE CONSTANTS – edit only these
@@ -38,11 +39,10 @@ BOOK_FOR_TOMORROW = True      # True → selects tomorrow automatically
 def launch_browser() -> "webdriver":
     opts = ChromeOptions()
     opts.add_argument("--start-maximized")
-    # comment out headless=False if you prefer a visible browser
+    # comment out headless if you prefer to see the browser while running
     opts.add_argument("--headless=new")
-    from selenium.webdriver.chrome.service import Service
-service = Service(ChromeDriverManager().install())
-return Chrome(service=service, options=opts)
+    service = Service(ChromeDriverManager().install())
+    return Chrome(service=service, options=opts)
 
 def wait(driver, locator, sec=15):
     """Shorthand for WebDriverWait"""
@@ -58,53 +58,3 @@ def main():
         wait_for_click((By.LINK_TEXT, "Sign In")).click()
 
         # --- 2. log in ----------------------------------------------
-        wait(driver, (By.ID, "loginEmail")).send_keys(ADDA_EMAIL)
-        driver.find_element(By.ID, "password").send_keys(ADDA_PASSWORD)
-        driver.find_element(By.XPATH, "//button[.='Sign In']").click()
-
-        # --- 3. land inside MyADDA, open Facilities tab -------------
-        wait_for_click(
-            (By.XPATH, "//span[normalize-space()='Facilities' or text()='Facilities']")
-        ).click()
-
-        # Facilities UI is an AngularJS SPA → switch to the iframe-less URL
-        driver.get("https://in.adda.io/myadda/facilities-index.php#/facilities")
-        wait(driver, (By.ID, "fac_name"))
-
-        # --- 4. choose desired facility -----------------------------
-        Select(driver.find_element(By.ID, "fac_name")).select_by_visible_text(FACILITY_NAME)
-
-        # --- 5. pick booking date -----------------------------------
-        if BOOK_FOR_TOMORROW:
-            target_date = (date.today() + timedelta(days=1)).strftime("%d-%m-%Y")
-            js = f"document.getElementById('datepicker').value = '{target_date}'"
-            driver.execute_script(js)
-        else:
-            driver.find_element(By.ID, "datepicker").click()
-            # – if not auto-filling, user must interact with date-picker here –
-
-        # --- 6. select time slot ------------------------------------
-        Select(driver.find_element(By.NAME, "fac_slot_id")).select_by_visible_text(SLOT_TEXT)
-
-        # --- 7. select flat -----------------------------------------
-        Select(driver.find_element(By.NAME, "flatId")).select_by_visible_text(FLAT_TEXT)
-
-        # --- 8. check availability (and optionally book) ------------
-        driver.find_element(By.XPATH, "//button[normalize-space()='Check Availability']").click()
-
-        # wait for success OR error popup
-        try:
-            ok_btn = wait_for_click((By.XPATH, "//button[.='Book Facility']"), sec=8)
-            print("✅ Slot available – booking now …")
-            ok_btn.click()
-            # brief wait for server confirmation
-            time.sleep(2)
-        except Exception:
-            print("❌ Slot not available or booking restricted for today.")
-
-    finally:
-        # comment out if you want the browser left open
-        driver.quit()
-
-if __name__ == "__main__":
-    main()
