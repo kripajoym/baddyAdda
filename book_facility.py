@@ -29,7 +29,7 @@ ADDA_EMAIL      = "kripajoym@gmail.com"
 ADDA_PASSWORD   = "Adda@1234567"
 
 FACILITY_NAME   = "Club House - Badminton Court 3"   # label from <select>
-SLOT_TEXT       = "17:00:00 to 18:00:00"             # visible text in slot <select>
+SLOT_TEXT       = "13:00:00 to 14:00:00"             # visible text in slot <select>
 FLAT_TEXT       = "F3-402"                           # visible text in flat <select>
 
 BOOK_FOR_TOMORROW = True      # True → selects tomorrow automatically
